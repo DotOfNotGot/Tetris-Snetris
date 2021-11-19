@@ -19,6 +19,7 @@ namespace Tetris
     class Program
     {
         static Dictionary<Piece, Dictionary<int, bool[,]>> PieceShapes = new Dictionary<Piece, Dictionary<int, bool[,]>>();
+
         //Loads all the pieces into the bool array dictionary PieceShapes and all rotations to an inner dictionary to not have to load from file them every time they are used.
         static void LoadPiecesData()
         {
@@ -32,6 +33,7 @@ namespace Tetris
                 }
             }
         }
+
         //Reads the shape of a piece and feeds it into a 4x4 bool array.
         static bool[,] LoadPieceData(string path, int offset)
         {
@@ -46,17 +48,18 @@ namespace Tetris
             }
             return pieceShape;
         }
+
         //Uses the other DrawPiece method to draw the piece.
         static void DrawPiece(int originX, int originY, Piece piece, int rotation)
         {
             DrawPiece(originX, originY, piece, "█", rotation);
         }
+
         //Uses the DrawPiece method to erase the piece.
         static void ErasePiece(int originX, int originY, Piece piece, int rotation)
         {
             DrawPiece(originX, originY, piece, " ", rotation);
         }
-
 
         //Method for both drawing and erasing pieces.
         static void DrawPiece(int originX, int originY, Piece piece, string symbol, int rotation)
@@ -74,7 +77,7 @@ namespace Tetris
                 }
             }
         }
-        
+
         //Sets the play area in the array and draws it out
         static void DrawBorder(int width, int height)
         {
@@ -162,6 +165,76 @@ namespace Tetris
                 }
             }
         }
+
+        static int CheckLines(bool[,] playArea, int points)
+        {
+            int width = playArea.GetLength(0);
+            int height = playArea.GetLength(1);
+            int lineCounter = 0;
+            Dictionary<int, bool> linesCleared = new Dictionary<int, bool>();
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    if (playArea[x, y])
+                    {
+                        lineCounter++;
+                    }
+                    if (x == width - 1)
+                    {
+                        if (lineCounter == width)
+                        {
+                            linesCleared[y] = true;
+                        }
+                        else
+                        {
+                            linesCleared[y] = false;
+                        }
+                        lineCounter = 0;
+                    }
+                }
+            }
+            ClearLines(playArea, points, linesCleared, width, height);
+            return points;
+        }
+        static int ClearLines(bool[,] playArea, int points, Dictionary<int, bool> linesCleared, int width, int height)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (linesCleared[y])
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        //PushLinesDown(playArea, width, height, y);
+                        Console.SetCursorPosition(x * 2 + 1, y);
+                        if (playArea[x,y])
+                        {
+                            Console.Write("██");
+                        }
+                        else
+                        {
+                            Console.Write("  ");
+                        }
+                        PushLinesDown(playArea, width, height, y);
+                    }
+                }
+            }
+            return points += 100000000;
+        }
+        static void PushLinesDown(bool[,] playArea, int width, int height, int lineY)
+        {
+            int storedY;
+            for (int y = lineY; y < height; y++)
+            {
+                storedY = lineY - 1;
+                for (int x = 0; x < width; x++)
+                {
+                    playArea[x, y] = playArea[x, storedY];
+                }
+                
+            }
+        }
+
         static void DrawPlayAreaDebug(bool[,] playArea)
         {
             int width = playArea.GetLength(0);
@@ -179,11 +252,11 @@ namespace Tetris
         {
             Console.CursorVisible = false;
             var random = new Random();
-            int width = 5;
+            int width = 10;
             int height = 20;
             int level = 2500000;
             var playArea = new bool[width, height];
-
+            int points = 0;
             int pieceRotation;
             int pieceX;
             int pieceY;
@@ -291,7 +364,11 @@ namespace Tetris
                     if (!MovePieceIfPossible(0, 1))
                     {
                         //Chooses a random piece and draws it to screen.
+                        points += 100;
+                        CheckLines(playArea, points);
                         SpawnPiece();
+                        Console.SetCursorPosition(width + width + 2, 0);
+                        Console.Write($"Points: {points}");
                     }
                 }
                 //DrawPlayAreaDebug(playArea);
