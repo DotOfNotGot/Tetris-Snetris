@@ -16,20 +16,24 @@ namespace Tetris
         Z
     }
 
-
     class Program
     {
-        static Dictionary<Piece, bool[,]> PieceShapes = new Dictionary<Piece, bool[,]>();
+        static Dictionary<Piece, Dictionary<int, bool[,]>> PieceShapes = new Dictionary<Piece, Dictionary<int, bool[,]>>();
+        //Loads all the pieces into the bool array dictionary PieceShapes and all rotations to an inner dictionary to not have to load from file them every time they are used.
         static void LoadPiecesData()
         {
             foreach (Piece piece in Enum.GetValues(typeof(Piece)))
             {
+                PieceShapes[piece] = new Dictionary<int, bool[,]>();
                 string pieceName = Enum.GetName(typeof(Piece), piece);
-                PieceShapes[piece] = LoadPieceData($"{pieceName}Piece.txt");
+                for (int i = 0; i < 4; i++)
+                {
+                    PieceShapes[piece][i] = LoadPieceData($"{pieceName}Piece.txt", i * 4);
+                }
             }
         }
-
-        static bool[,] LoadPieceData(string path)
+        //Reads the shape of a piece and feeds it into a 4x4 bool array.
+        static bool[,] LoadPieceData(string path, int offset)
         {
             bool[,] pieceShape = new bool[4, 4];
             string[] lines = File.ReadAllLines(path);
@@ -37,24 +41,27 @@ namespace Tetris
             {
                 for (int x = 0; x < 4; x++)
                 {
-                    pieceShape[x, y] = lines[y][x] != ' ';
+                    pieceShape[x, y] = lines[y + offset][x] != ' ';
                 }
             }
             return pieceShape;
         }
-        static void DrawPiece(int originX, int originY, Piece piece)
+        //Uses the other DrawPiece method to draw the piece.
+        static void DrawPiece(int originX, int originY, Piece piece, int rotation)
         {
-            DrawPiece(originX, originY, piece, "█");
+            DrawPiece(originX, originY, piece, "█", rotation);
+        }
+        //Uses the DrawPiece method to erase the piece.
+        static void ErasePiece(int originX, int originY, Piece piece, int rotation)
+        {
+            DrawPiece(originX, originY, piece, " ", rotation);
         }
 
-        static void ErasePiece(int originX, int originY, Piece piece)
-        {
-            DrawPiece(originX, originY, piece, " ");
-        }
 
-        static void DrawPiece(int originX, int originY, Piece piece, string symbol)
+        //Method for both drawing and erasing pieces.
+        static void DrawPiece(int originX, int originY, Piece piece, string symbol, int rotation)
         {
-            bool[,] pieceShape = PieceShapes[piece];
+            bool[,] pieceShape = PieceShapes[piece][rotation];
             for (int y = 0; y < 4; y++)
             {
                 for (int x = 0; x < 4; x++)
@@ -67,29 +74,28 @@ namespace Tetris
                 }
             }
         }
-
+        
         //Sets the play area in the array and draws it out
-        static void DrawPlayArea(int width, int height)
+        static void DrawBorder(int width, int height)
         {
-
-            for (int y = 0; y < height+1; y++)
+            for (int y = 0; y < height + 1; y++)
             {
-                for (int x = 0; x < width+2; x++)
+                for (int x = 0; x < width + 2; x++)
                 {
                     string symbol = "  ";
-                    if ((x == 0 || x == width + 1) && y < height - 1)
+                    if ((x == 0 || x == width + 1) && y < height)
                     {
                         symbol = "║";
                     }
-                    else if (y == height - 1 && x == 0)
+                    else if (y == height && x == 0)
                     {
                         symbol = "╚";
                     }
-                    else if (y == height - 1 && x != 0 && x < width+1)
+                    else if (y == height && x != 0 && x < width + 1)
                     {
                         symbol = "══";
                     }
-                    else if (y == height - 1 && x == width+1)
+                    else if (y == height && x == width + 1)
                     {
                         symbol = "╝";
                     }
@@ -98,44 +104,199 @@ namespace Tetris
                 Console.WriteLine();
             }
         }
-
+        static bool CanAddPiece(int originX, int originY, Piece piece, int rotation, bool[,] playArea)
+        {
+            int width = playArea.GetLength(0);
+            int height = playArea.GetLength(1);
+            bool[,] pieceShape = PieceShapes[piece][rotation];
+            for (int y = 0; y < 4; y++)
+            {
+                for (int x = 0; x < 4; x++)
+                {
+                    if (pieceShape[x, y])
+                    {
+                        int targetX = originX + x;
+                        int targetY = originY + y;
+                        if (targetX < width && targetY < height && targetX >= 0)
+                        {
+                            if (targetY >= 0 && playArea[targetX, targetY])
+                            {
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+        static void AddPiece(int originX, int originY, Piece piece, int rotation, bool[,] playArea)
+        {
+            PlacePiece(originX, originY, piece, rotation, playArea, true);
+        }
+        static void RemovePiece(int originX, int originY, Piece piece, int rotation, bool[,] playArea)
+        {
+            PlacePiece(originX, originY, piece, rotation, playArea, false);
+        }
+        static void PlacePiece(int originX, int originY, Piece piece, int rotation, bool[,] playArea, bool value)
+        {
+            int width = playArea.GetLength(0);
+            int height = playArea.GetLength(1);
+            bool[,] pieceShape = PieceShapes[piece][rotation];
+            for (int y = 0; y < 4; y++)
+            {
+                for (int x = 0; x < 4; x++)
+                {
+                    if (pieceShape[x, y])
+                    {
+                        int targetX = originX + x;
+                        int targetY = originY + y;
+                        if (targetX < width && targetY < height && targetX >= 0 && targetY >= 0)
+                        {
+                            playArea[targetX, targetY] = value;
+                        }
+                    }
+                }
+            }
+        }
+        static void DrawPlayAreaDebug(bool[,] playArea)
+        {
+            int width = playArea.GetLength(0);
+            int height = playArea.GetLength(1);
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    Console.SetCursorPosition((x) * 2 + 1, y);
+                    Console.Write(playArea[x, y] ? "██" : "  ");
+                }
+            }
+        }
         static void Main(string[] args)
         {
             Console.CursorVisible = false;
             var random = new Random();
-            int width = 10;
+            int width = 5;
             int height = 20;
+            int level = 2500000;
             var playArea = new bool[width, height];
-            //Draw the play area.
-            DrawPlayArea(width, height);
 
-            //Load all pieces.
+            int pieceRotation;
+            int pieceX;
+            int pieceY;
+            Piece piece;
+            //Load all pieces into the PieceShapes dictionary of bool arrays. Uses enum Piece as keys.
             LoadPiecesData();
 
-            //Chooses a random piece and draws it to screen.
-            Piece piece = (Piece)random.Next(7);
-            int pieceX = 0;
-            int pieceY = 0;
-            DrawPiece(pieceX, pieceY, piece);
+            void SpawnPiece()
+            {
+                piece = (Piece)random.Next(7);
+                pieceX = 3;
+                pieceY = 0;
+                pieceRotation = 0;
+                AddPiece(pieceX, pieceY, piece, pieceRotation, playArea);
+                DrawPiece(pieceX, pieceY, piece, pieceRotation);
+            }
+            //Checks if piece can be moved and then moves if it can or remains in same place if it cant.
+            bool MovePieceIfPossible(int deltaX, int deltaY)
+            {
+                RemovePiece(pieceX, pieceY, piece, pieceRotation, playArea);
+                if (CanAddPiece(pieceX + deltaX, pieceY + deltaY, piece, pieceRotation, playArea))
+                {
+                    //Erase piece
+                    ErasePiece(pieceX, pieceY, piece, pieceRotation);
+                    pieceX += deltaX;
+                    pieceY += deltaY;
 
+                    //Redraw the piece in new position.
+                    AddPiece(pieceX, pieceY, piece, pieceRotation, playArea);
+                    DrawPiece(pieceX, pieceY, piece, pieceRotation);
+                    return true;
+                }
+                else
+                {
+                    AddPiece(pieceX, pieceY, piece, pieceRotation, playArea);
+                    return false;
+                }
+            }
+            //Checks if piece can be rotated and then rotates if it can or remains in same rotation if it cant.
+            bool RotatePieceIfPossible(int deltaRotation)
+            {
+                RemovePiece(pieceX, pieceY, piece, pieceRotation, playArea);
+                int targetRotation = (pieceRotation + deltaRotation + 4) % 4;
+
+                if (CanAddPiece(pieceX, pieceY, piece, targetRotation, playArea))
+                {
+                    //Erase piece
+                    ErasePiece(pieceX, pieceY, piece, pieceRotation);
+                    pieceRotation = targetRotation;
+
+                    //Redraw the piece in new position.
+                    AddPiece(pieceX, pieceY, piece, pieceRotation, playArea);
+                    DrawPiece(pieceX, pieceY, piece, pieceRotation);
+                    return true;
+                }
+                else
+                {
+                    AddPiece(pieceX, pieceY, piece, pieceRotation, playArea);
+                    return false;
+                }
+            }
+
+            //Draw the play area.
+            DrawBorder(width, height);
+
+            //Chooses a random piece and draws it to screen.
+            SpawnPiece();
+
+            long tickTimer = DateTime.Now.Ticks;
             //Main game loop
             while (true)
             {
-                
-                //Proceed to next tick.
-                Thread.Sleep(250);
+                int fastDrop = 0;
 
-                //Drop piece down.
-                pieceY++;
-
-                //Erase piece
-                ErasePiece(pieceX, pieceY - 1, piece);
-
-                //Redraw the piece in new position.
-                DrawPiece(pieceX, pieceY, piece);
+                if (Console.KeyAvailable)
+                {
+                    var keyPress = Console.ReadKey(true);
+                    switch (keyPress.Key)
+                    {
+                        case ConsoleKey.Escape:
+                            Environment.Exit(0);
+                            break;
+                        case ConsoleKey.LeftArrow:
+                            MovePieceIfPossible(-1, 0);
+                            break;
+                        case ConsoleKey.RightArrow:
+                            MovePieceIfPossible(1, 0);
+                            break;
+                        case ConsoleKey.DownArrow:
+                            fastDrop = 5000000;
+                            break;
+                        case ConsoleKey.Z:
+                            RotatePieceIfPossible(-1);
+                            break;
+                        case ConsoleKey.X:
+                            RotatePieceIfPossible(1);
+                            break;
+                    }
+                }
+                //Checks if a tick has hapenned and if its true drops the piece down by one step.
+                long tickTimerNew = DateTime.Now.Ticks;
+                if (tickTimerNew - tickTimer >= level - fastDrop)
+                {
+                    tickTimer = tickTimerNew;
+                    if (!MovePieceIfPossible(0, 1))
+                    {
+                        //Chooses a random piece and draws it to screen.
+                        SpawnPiece();
+                    }
+                }
+                //DrawPlayAreaDebug(playArea);
+                Thread.Sleep(1);
             }
-            
-            Console.SetCursorPosition(0, 22);
         }
     }
 }
