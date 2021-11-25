@@ -187,7 +187,7 @@ namespace Tetris
             }
         }
 
-        static void CheckLines(bool[,] playArea, ref int linesForLevel, ref int points)
+        static void CheckLines(bool[,] playArea, ref int linesForLevel, ref int points, int level)
         {
             int width = playArea.GetLength(0);
             int height = playArea.GetLength(1);
@@ -215,9 +215,9 @@ namespace Tetris
                     }
                 }
             }
-            ClearLines(playArea, linesCleared, width, height, ref linesForLevel, ref points);
+            ClearLines(playArea, linesCleared, width, height, ref linesForLevel, ref points, level);
         }
-        static void ClearLines(bool[,] playArea, Dictionary<int, bool> linesCleared, int width, int height, ref int linesForLevel, ref int points)
+        static void ClearLines(bool[,] playArea, Dictionary<int, bool> linesCleared, int width, int height, ref int linesForLevel, ref int points, int level)
         {
             points += 100;
             List<int> linesClearedAmount = new List<int>();
@@ -235,23 +235,24 @@ namespace Tetris
                     }
                 }
             }
+            linesForLevel += linesClearedAmount.Count;
             if (linesClearedAmount.Count == 1)
             {
-                points += 40;
+                points += 40 * (level + 1);
             }
             else if (linesClearedAmount.Count == 2)
             {
-                points += 100;
+                points += 100 * (level + 1);
             }
             else if (linesClearedAmount.Count == 3)
             {
-                points += 300;
+                points += 300 * (level + 1);
             }
             else if (linesClearedAmount.Count == 4)
             {
-                points += 1200;
+                points += 1200 * (level + 1);
             }
-            linesForLevel += linesClearedAmount.Count;
+            
             for (int y = 0; y < height; y++)
             {
                 if (linesCleared[y])
@@ -396,7 +397,6 @@ namespace Tetris
             while (!lost)
             {
                 bool fastDrop = false;
-
                 if (Console.KeyAvailable)
                 {
                     var keyPress = Console.ReadKey(true);
@@ -422,6 +422,8 @@ namespace Tetris
                             break;
                     }
                 }
+
+                
                 //Checks if a tick has hapenned and if its true drops the piece down by one step.
                 long tickTimerNew = DateTime.Now.Ticks;
                 if (linesCleared >= (level + 1) * 10)
@@ -431,12 +433,12 @@ namespace Tetris
                     Console.SetCursorPosition(width + width + 2, 0);
                     Console.Write($"Level: {level}");
                 }
-                if (tickTimerNew - tickTimer >= (fastDrop ? Math.Min(SoftDropTickDuration, tickDuration) : tickDuration))
+                if (tickTimerNew - tickTimer >= (fastDrop ? Math.Min(SoftDropTickDuration, tickDuration) : tickDuration) )
                 {
                     tickTimer = tickTimerNew;
                     if (!MovePieceIfPossible(0, 1))
                     {
-                        CheckLines(playArea, ref linesCleared, ref points);
+                        CheckLines(playArea, ref linesCleared, ref points, level);
                         //Chooses a random piece and draws it to screen.
                         SpawnPiece();
                         Console.SetCursorPosition(width + width + 2, 1);
@@ -445,10 +447,10 @@ namespace Tetris
                         Console.Write($"Lines cleared: {linesCleared}");
                     }
                 }
-
                 //DrawPlayAreaDebug(playArea);
                 Thread.Sleep(1);
             }
+            Console.SetCursorPosition(0, 22);
             Console.WriteLine("get fucked");
             Thread.Sleep(1000);
         }
