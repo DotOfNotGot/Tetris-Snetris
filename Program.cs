@@ -91,7 +91,7 @@ namespace Tetris
                     {
                         if (targetY >= 0)
                         {
-                            Console.SetCursorPosition(targetX * 2 + 1, targetY);
+                            Console.SetCursorPosition(targetX * 2 + 13, targetY);
                             Console.Write(symbol + symbol);
                         }
                     }
@@ -99,27 +99,29 @@ namespace Tetris
             }
         }
 
-        //Sets the play area in the array and draws it out
-        static void DrawBorder(int width, int height)
+        //Draws the border around the playarea.
+        static void DrawBorder(int width, int height, int drawOffset)
         {
+
             for (int y = 0; y < height + 1; y++)
             {
-                for (int x = 0; x < width + 2; x++)
+                Console.SetCursorPosition(drawOffset, y);
+                for (int x = 0; x < width + drawOffset + 2; x++)
                 {
                     string symbol = "  ";
-                    if ((x == 0 || x == width + 1) && y < height)
+                    if ((x == drawOffset || x == width + drawOffset + 1) && y < height)
                     {
                         symbol = "║";
                     }
-                    else if (y == height && x == 0)
+                    else if (y == height && x == drawOffset)
                     {
                         symbol = "╚";
                     }
-                    else if (y == height && x != 0 && x < width + 1)
+                    else if (y == height && x > drawOffset && x < width + drawOffset + 1)
                     {
                         symbol = "══";
                     }
-                    else if (y == height && x == width + 1)
+                    else if (y == height && x == width + drawOffset + 1)
                     {
                         symbol = "╝";
                     }
@@ -228,7 +230,7 @@ namespace Tetris
                     linesClearedAmount.Add(0);
                     for (int x = 0; x < width; x++)
                     {
-                        Console.SetCursorPosition(x * 2 + 1, y);
+                        Console.SetCursorPosition(x * 2 + 13, y);
                         playArea[x, y] = false;
                         Console.Write("  ");
 
@@ -252,7 +254,7 @@ namespace Tetris
             {
                 points += 1200 * (level + 1);
             }
-            
+
             for (int y = 0; y < height; y++)
             {
                 if (linesCleared[y])
@@ -273,7 +275,7 @@ namespace Tetris
                     {
                         playArea[x, lineY] = playArea[x, lineY - 1];
                         playArea[x, lineY - 1] = false;
-                        Console.SetCursorPosition(x * 2 + 1, lineY);
+                        Console.SetCursorPosition(x * 2 + 13, lineY);
                         if (playArea[x, lineY])
                         {
                             Console.Write("██");
@@ -282,7 +284,7 @@ namespace Tetris
                         {
                             Console.Write("  ");
                         }
-                        Console.SetCursorPosition(x * 2 + 1, lineY - 1);
+                        Console.SetCursorPosition(x * 2 + 13, lineY - 1);
                         Console.Write("  ");
                     }
                 }
@@ -306,10 +308,13 @@ namespace Tetris
         {
             Console.CursorVisible = false;
             var random = new Random();
-            int width = 10;
-            int height = 20;
+            int tetrisWidth = 10;
+            int tetrisHeight = 20;
+            int snakeWidth = 4;
+            int snakeHeight = 4;
             int tickDuration = GetLevelTickDurations(0);
-            var playArea = new bool[width, height];
+            var playArea = new bool[tetrisWidth, tetrisHeight];
+            var colorArray = new ConsoleColor[tetrisWidth, tetrisHeight];
             int points = 0;
             int linesCleared = 0;
             bool lost = false;
@@ -381,14 +386,23 @@ namespace Tetris
                 }
             }
 
-            //Draw the play area.
-            DrawBorder(width, height);
-            Console.SetCursorPosition(width + width + 2, 0);
+
+
+            //Draws the border around the tetris play area.
+            DrawBorder(tetrisWidth, tetrisHeight, 4);
+
+            //Draws the border around the snake play area.
+            DrawBorder(snakeWidth, snakeHeight, 0);
+
+            //Draws level, points and amounts of lines cleared as 0.
+            Console.SetCursorPosition(tetrisWidth + tetrisWidth + 14, 0);
             Console.Write($"Level: {level}");
-            Console.SetCursorPosition(width + width + 2, 1);
+            Console.SetCursorPosition(tetrisWidth + tetrisWidth + 14, 1);
             Console.Write($"Points: {points}");
-            Console.SetCursorPosition(width + width + 2, 2);
+            Console.SetCursorPosition(tetrisWidth + tetrisWidth + 14, 2);
             Console.Write($"Lines cleared: {linesCleared}");
+
+
             //Chooses a random piece and draws it to screen.
             SpawnPiece();
 
@@ -423,17 +437,17 @@ namespace Tetris
                     }
                 }
 
-                
+
                 //Checks if a tick has hapenned and if its true drops the piece down by one step.
                 long tickTimerNew = DateTime.Now.Ticks;
                 if (linesCleared >= (level + 1) * 10)
                 {
                     level += 1;
                     tickDuration = GetLevelTickDurations(level);
-                    Console.SetCursorPosition(width + width + 2, 0);
+                    Console.SetCursorPosition(tetrisWidth + tetrisWidth + 14, 0);
                     Console.Write($"Level: {level}");
                 }
-                if (tickTimerNew - tickTimer >= (fastDrop ? Math.Min(SoftDropTickDuration, tickDuration) : tickDuration) )
+                if (tickTimerNew - tickTimer >= (fastDrop ? Math.Min(SoftDropTickDuration, tickDuration) : tickDuration))
                 {
                     tickTimer = tickTimerNew;
                     if (!MovePieceIfPossible(0, 1))
@@ -441,9 +455,9 @@ namespace Tetris
                         CheckLines(playArea, ref linesCleared, ref points, level);
                         //Chooses a random piece and draws it to screen.
                         SpawnPiece();
-                        Console.SetCursorPosition(width + width + 2, 1);
+                        Console.SetCursorPosition(tetrisWidth + tetrisWidth + 14, 1);
                         Console.Write($"Points: {points}");
-                        Console.SetCursorPosition(width + width + 2, 2);
+                        Console.SetCursorPosition(tetrisWidth + tetrisWidth + 14, 2);
                         Console.Write($"Lines cleared: {linesCleared}");
                     }
                 }
